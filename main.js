@@ -39,7 +39,12 @@ function secondsToDuration(secs) {
 // Returns: string formatted as h:mm:ss
 // ============================================================
 function getShiftDuration(startTime, endTime) {
-    // TODO: Implement this function
+   const t1 = timeToSeconds(startTime);
+    let t2 = timeToSeconds(endTime);
+    
+    if (t2 < t1) t2 += (24 * 3600);
+    
+    return secondsToDuration(t2 - t1);
 }
 
 // ============================================================
@@ -49,7 +54,17 @@ function getShiftDuration(startTime, endTime) {
 // Returns: string formatted as h:mm:ss
 // ============================================================
 function getIdleTime(startTime, endTime) {
-    // TODO: Implement this function
+     const start = timeToSeconds(startTime);
+    let end = timeToSeconds(endTime);
+    if (end < start) end += (24 * 3600);
+
+    const DAY_START = 8 * 3600;  // 8 AM
+    const DAY_END = 22 * 3600;   // 10 PM
+
+    const gapBefore = Math.max(0, Math.min(end, DAY_START) - start);
+    const gapAfter = Math.max(0, end - Math.max(start, DAY_END));
+    
+    return secondsToDuration(gapBefore + gapAfter);
 }
 
 // ============================================================
