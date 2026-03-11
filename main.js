@@ -12,6 +12,26 @@ function timeToSeconds(timeStr) {
     
     return (h * 3600) + (m * 60) + s;
 }
+
+function durationToSeconds(durationStr) {
+    const units = durationStr.split(':').map(Number);
+    if (units.length === 3) {
+        const [hours, minutes, seconds] = units;
+        return (hours * 3600) + (minutes * 60) + seconds;
+    }
+    return 0;
+}
+
+function secondsToDuration(secs) {
+    const hours = Math.floor(secs / 3600);
+    const mins = Math.floor((secs % 3600) / 60);
+    const remainingSecs = secs % 60;
+    
+    const mm = String(mins).padStart(2, '0');
+    const ss = String(remainingSecs).padStart(2, '0');
+    
+    return `${hours}:${mm}:${ss}`;
+}
 // ============================================================
 // Function 1: getShiftDuration(startTime, endTime)
 // startTime: (typeof string) formatted as hh:mm:ss am or hh:mm:ss pm
