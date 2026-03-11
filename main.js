@@ -74,7 +74,8 @@ function getIdleTime(startTime, endTime) {
 // Returns: string formatted as h:mm:ss
 // ============================================================
 function getActiveTime(shiftDuration, idleTime) {
-    // TODO: Implement this function
+const activeSecs = durationToSeconds(shiftDuration) - durationToSeconds(idleTime);
+    return secondsToDuration(Math.max(0, activeSecs));
 }
 
 // ============================================================
@@ -84,7 +85,15 @@ function getActiveTime(shiftDuration, idleTime) {
 // Returns: boolean
 // ============================================================
 function metQuota(date, activeTime) {
-    // TODO: Implement this function
+const currentActive = durationToSeconds(activeTime);
+    const dateParts = date.split('-').map(Number);
+    const [y, m, d] = dateParts;
+    
+    
+    const isHoliday = (y === 2025 && m === 4 && d >= 10 && d <= 30);
+    const target = isHoliday ? (6 * 3600) : (8 * 3600 + 24 * 60); 
+    
+    return currentActive >= target;
 }
 
 // ============================================================
@@ -94,7 +103,41 @@ function metQuota(date, activeTime) {
 // Returns: object with 10 properties or empty object {}
 // ============================================================
 function addShiftRecord(textFile, shiftObj) {
-    // TODO: Implement this function
+const data = fs.readFileSync(textFile, 'utf8').split('\n').filter(row => row.trim());
+    
+    
+    const alreadyExists = data.some(row => {
+        const cols = row.split(',');
+        return cols[0] === shiftObj.driverID && cols[2] === shiftObj.date;
+    });
+
+    if (alreadyExists) return {};
+
+    const dur = getShiftDuration(shiftObj.startTime, shiftObj.endTime);
+    const idle = getIdleTime(shiftObj.startTime, shiftObj.endTime);
+    const active = getActiveTime(dur, idle);
+    const quota = metQuota(shiftObj.date, active);
+
+    const newRow = `${shiftObj.driverID},${shiftObj.driverName},${shiftObj.date},${shiftObj.startTime},${shiftObj.endTime},${dur},${idle},${active},${quota},false`;
+
+    let insertPos = -1;
+    for (let i = 0; i < data.length; i++) {
+        if (data[i].split(',')[0] === shiftObj.driverID) insertPos = i;
+    }
+
+    if (insertPos === -1) data.push(newRow);
+    else data.splice(insertPos + 1, 0, newRow);
+
+    fs.writeFileSync(textFile, data.join('\n') + '\n');
+    
+    return {
+        ...shiftObj,
+        shiftDuration: dur,
+        idleTime: idle,
+        activeTime: active,
+        metQuota: quota,
+        hasBonus: false
+    };
 }
 
 // ============================================================
@@ -106,8 +149,16 @@ function addShiftRecord(textFile, shiftObj) {
 // Returns: nothing (void)
 // ============================================================
 function setBonus(textFile, driverID, date, newValue) {
-    // TODO: Implement this function
-}
+const fileLines = fs.readFileSync(textFile, 'utf8').split('\n');
+    const updatedContent = fileLines.map(line => {
+        const segments = line.split(',');
+        if (segments[0] === driverID && segments[2] === date) {
+            segments[9] = String(newValue);
+            return segments.join(',');
+        }
+        return line;
+    });
+    fs.writeFileSync(textFile, updatedContent.join('\n'));}
 
 // ============================================================
 // Function 7: countBonusPerMonth(textFile, driverID, month)
