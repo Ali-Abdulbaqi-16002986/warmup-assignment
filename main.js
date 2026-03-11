@@ -158,7 +158,8 @@ const fileLines = fs.readFileSync(textFile, 'utf8').split('\n');
         }
         return line;
     });
-    fs.writeFileSync(textFile, updatedContent.join('\n'));}
+    fs.writeFileSync(textFile, updatedContent.join('\n'));
+}
 
 // ============================================================
 // Function 7: countBonusPerMonth(textFile, driverID, month)
@@ -168,7 +169,22 @@ const fileLines = fs.readFileSync(textFile, 'utf8').split('\n');
 // Returns: number (-1 if driverID not found)
 // ============================================================
 function countBonusPerMonth(textFile, driverID, month) {
-    // TODO: Implement this function
+const records = fs.readFileSync(textFile, 'utf8').split('\n').filter(r => r.trim());
+    let bonusCount = 0;
+    let foundDriver = false;
+    const mm = String(month).padStart(2, '0');
+
+    records.forEach(record => {
+        const data = record.split(',');
+        if (data[0] === driverID) {
+            foundDriver = true;
+            const entryMonth = data[2].split('-')[1];
+            if (entryMonth === mm && data[9] === 'true') {
+                bonusCount++;
+            }
+        }
+    });
+    return foundDriver ? bonusCount : -1;
 }
 
 // ============================================================
@@ -179,7 +195,30 @@ function countBonusPerMonth(textFile, driverID, month) {
 // Returns: string formatted as hhh:mm:ss
 // ============================================================
 function getTotalActiveHoursPerMonth(textFile, driverID, month) {
-    // TODO: Implement this function
+const rows = fs.readFileSync(textFile, 'utf8').split('\n').filter(r => r.trim());
+    const targetMonth = String(month).padStart(2, '0');
+    
+    
+    const dailyActiveTracker = {}; 
+
+    for (let i = 0; i < rows.length; i++) {
+        const fields = rows[i].split(',');
+        const [id, , dateStr] = fields;
+        const entryMonth = dateStr.split('-')[1];
+
+        if (id === driverID && entryMonth === targetMonth) {
+            
+            dailyActiveTracker[dateStr] = durationToSeconds(fields[7]);
+        }
+    }
+
+    let totalSeconds = 0;
+    
+    for (const date in dailyActiveTracker) {
+        totalSeconds += dailyActiveTracker[date];
+    }
+
+    return secondsToDuration(totalSeconds);
 }
 
 // ============================================================
@@ -192,7 +231,36 @@ function getTotalActiveHoursPerMonth(textFile, driverID, month) {
 // Returns: string formatted as hhh:mm:ss
 // ============================================================
 function getRequiredHoursPerMonth(textFile, rateFile, bonusCount, driverID, month) {
-    // TODO: Implement this function
+ const rateData = fs.readFileSync(rateFile, 'utf8').split('\n').filter(r => r.trim());
+    const driverConfig = rateData.find(line => line.startsWith(driverID + ',')).split(',');
+    const dayOff = driverConfig[1].trim();
+
+    const shiftEntries = fs.readFileSync(textFile, 'utf8').split('\n').filter(r => r.trim());
+    let accumulatedSecs = 0;
+    const targetMonth = String(month).padStart(2, '0');
+    const seenDays = new Set(); 
+
+    shiftEntries.forEach(entry => {
+        const fields = entry.split(',');
+        const entryDate = fields[2];
+        if (fields[0] === driverID && entryDate.split('-')[1] === targetMonth) {
+            if (!seenDays.has(entryDate)) {
+                seenDays.add(entryDate);
+                
+                const dObj = new Date(entryDate);
+                const dayName = dObj.toLocaleDateString('en-US', { weekday: 'long' });
+
+                if (dayName !== dayOff) {
+                    const [y, m, d] = entryDate.split('-').map(Number);
+                    const isEid = (y === 2025 && m === 4 && d >= 10 && d <= 30);
+                    accumulatedSecs += isEid ? (6 * 3600) : (8 * 3600 + 24 * 60);
+                }
+            }
+        }
+    });
+
+    const finalReq = accumulatedSecs - (bonusCount * 7200);
+    return secondsToDuration(Math.max(0, finalReq));
 }
 
 // ============================================================
