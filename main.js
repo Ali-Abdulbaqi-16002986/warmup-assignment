@@ -272,7 +272,23 @@ function getRequiredHoursPerMonth(textFile, rateFile, bonusCount, driverID, mont
 // Returns: integer (net pay)
 // ============================================================
 function getNetPay(driverID, actualHours, requiredHours, rateFile) {
-    // TODO: Implement this function
+   const payTable = fs.readFileSync(rateFile, 'utf8').split('\n').filter(line => line.trim());
+    const targetDriver = payTable.find(row => row.startsWith(driverID + ',')).split(',');
+    
+    const salary = Number(targetDriver[2]);
+    const driverTier = Number(targetDriver[3]);
+
+    const shortage = durationToSeconds(requiredHours) - durationToSeconds(actualHours);
+    if (shortage <= 0) return salary;
+
+    const hourAllowances = [null, 50, 20, 10, 3]; 
+    const hoursMissing = Math.floor(shortage / 3600);
+    const billableShortage = Math.max(0, hoursMissing - hourAllowances[driverTier]);
+    
+    const hourlyRate = Math.floor(salary / 185);
+    const totalDeduction = billableShortage * hourlyRate;
+
+    return salary - totalDeduction;
 }
 
 module.exports = {
